@@ -1,0 +1,89 @@
+#!/bin/sh
+
+# MIT License
+# 
+# Copyright (c) 2016 Evsyukov Denis
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+iptables -F
+iptables -t nat -F
+iptables -t mangle -F
+
+ip6tables -F
+ip6tables -t nat -F
+ip6tables -t mangle -F
+
+# Allows all loopback (lo0) traffic and drop all traffic to 127/8 that doesn't use lo0
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT ! -i lo -d 127.0.0.0/8 -j REJECT
+
+ip6tables -A INPUT -i lo -j ACCEPT
+ip6tables -A INPUT ! -i lo -d ::1/128 -j REJECT
+
+# Accepts all established inbound connections
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allows all outbound traffic
+# You could modify this to only allow certain traffic
+iptables -A OUTPUT -j ACCEPT
+ip6tables -A OUTPUT -j ACCEPT
+
+# Allows HTTP and HTTPS connections from anywhere (the normal ports for websites)
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+ip6tables -A INPUT -p tcp --dport 80 -j ACCEPT
+ip6tables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# Allows SSH connections 
+# The --dport number is the same as in /etc/ssh/sshd_config
+iptables -A INPUT -p tcp -m state --state NEW --dport 22 -j ACCEPT
+ip6tables -A INPUT -p tcp -m state --state NEW --dport 22 -j ACCEPT
+
+# Allows ikev2
+iptables -A INPUT -p udp --dport 500 -j ACCEPT
+iptables -A INPUT -p udp --dport 4500 -j ACCEPT
+
+ip6tables -A INPUT -p udp --dport 500 -j ACCEPT
+ip6tables -A INPUT -p udp --dport 4500 -j ACCEPT
+
+# Allows udp
+iptables -A INPUT -p udp -j ACCEPT
+ip6tables -A INPUT -p udp -j ACCEPT
+
+# Allow VPN routing
+
+iptables -t nat -A POSTROUTING -s 10.8.0.0/16 -o eth0 -m policy --dir out --pol ipsec -j ACCEPT
+iptables -t nat -A POSTROUTING -s 10.8.0.0/16 -o eth0 -j MASQUERADE
+
+ip6tables -t nat -A POSTROUTING -s fd6a:6ce3:c8d8:7caa::/64 -o eth0 -m policy --dir out --pol ipsec -j ACCEPT
+ip6tables -t nat -A POSTROUTING -s fd6a:6ce3:c8d8:7caa::/64 -o eth0 -j MASQUERADE
+
+# log iptables denied calls (access via 'dmesg' command)
+iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "iptables denied: " --log-level 7
+ip6tables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "ip6tables denied: " --log-level 7
+
+# Drop all other inbound - default deny unless explicitly allowed policy:
+iptables -A INPUT -j REJECT
+iptables -A FORWARD -j REJECT
+
+ip6tables -A INPUT -j REJECT
+ip6tables -A FORWARD -j REJECT
