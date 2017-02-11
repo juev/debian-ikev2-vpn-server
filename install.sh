@@ -41,7 +41,7 @@ aptitude update \
 
 rm /etc/ipsec.secrets
 
-cp ./etc/* /etc/
+cp -R ./etc/* /etc/
 
 sed -i '/^#net.ipv4.ip_forward=1/s/^#//' /etc/sysctl.conf
 sed -i '/^#net.ipv6.conf.all.forwarding=1/s/^#//' /etc/sysctl.conf
