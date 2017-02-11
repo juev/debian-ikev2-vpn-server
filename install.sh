@@ -35,7 +35,7 @@ cp ./etc/apt/preferences.d/ndppd /etc/apt/preferences.d/
 
 aptitude update \
   && DEBIAN_FRONTEND=noninteractive aptitude -y upgrade \
-  && DEBIAN_FRONTEND=noninteractive aptitude -y install iptables iptables-persistent uuid-runtime openssl openntpd \
+  && DEBIAN_FRONTEND=noninteractive aptitude -y install iptables uuid-runtime openssl openntpd \
   && DEBIAN_FRONTEND=noninteractive aptitude -y -t jessie-backports install strongswan \
   && DEBIAN_FRONTEND=noninteractive aptitude -y -t unstable install ndppd
 
@@ -50,6 +50,12 @@ grep -q 'net.ipv6.conf.eth0.proxy_ndp=1' /etc/sysctl.conf || echo 'net.ipv6.conf
 sysctl -f
 
 ./bin/iptables
+iptables-save > /etc/firewall.conf
+cat <<EOF > /etc/network/if-up.d/iptables
+#!/bin/sh
+iptables-restore < /etc/firewall.conf
+EOF
+chmod +x /etc/network/if-up.d/iptables
 
 # hotfix for openssl `unable to write 'random state'` stderr
 SHARED_SECRET="123$(openssl rand -base64 32 2>/dev/null)qwe"
