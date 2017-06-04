@@ -1,7 +1,0 @@
-Package: *
-Pin: release a=stable
-Pin-Priority: 700
-
-Package: ndppd
-Pin: release a=unstable
-Pin-Priority: 50

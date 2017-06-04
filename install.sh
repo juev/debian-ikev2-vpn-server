@@ -27,25 +27,20 @@ then echo "Please run as root"
   exit
 fi
 
-[ -f "/etc/apt/sources.list.d/jessie.list" ] && rm /etc/apt/sources.list.d/jessie.list
-echo "deb http://ftp.debian.org/debian jessie-backports main contrib" >> /etc/apt/sources.list.d/jessie.list
-echo "deb http://ftp.debian.org/debian sid main contrib" >> /etc/apt/sources.list.d/jessie.list
-
-cp ./etc/apt/preferences.d/ndppd /etc/apt/preferences.d/
+if ! type aptitude > /dev/null; then
+  DEBIAN_FRONTEND=noninteractive apt-get -y install aptitude 
+fi
 
 aptitude update \
   && DEBIAN_FRONTEND=noninteractive aptitude -y upgrade \
   && DEBIAN_FRONTEND=noninteractive aptitude -y install iptables uuid-runtime openssl openntpd \
-  && DEBIAN_FRONTEND=noninteractive aptitude -y -t jessie-backports install strongswan \
-  && DEBIAN_FRONTEND=noninteractive aptitude -y -t unstable install ndppd
+  && DEBIAN_FRONTEND=noninteractive aptitude -y install strongswan
 
 rm /etc/ipsec.secrets
 
 cp -R ./etc/* /etc/
 
 sed -i '/^#net.ipv4.ip_forward=1/s/^#//' /etc/sysctl.conf
-sed -i '/^#net.ipv6.conf.all.forwarding=1/s/^#//' /etc/sysctl.conf
-grep -q 'net.ipv6.conf.eth0.proxy_ndp=1' /etc/sysctl.conf || echo 'net.ipv6.conf.eth0.proxy_ndp=1' >> /etc/sysctl.conf
 
 sysctl -f
 
@@ -58,10 +53,9 @@ EOF
 chmod +x /etc/network/if-up.d/iptables
 
 # hotfix for openssl `unable to write 'random state'` stderr
-SHARED_SECRET="123$(openssl rand -base64 32 2>/dev/null)qwe"
+SHARED_SECRET="$(openssl rand -base64 64 2>/dev/null)"
 [ -f /etc/ipsec.secrets ] || echo ": PSK \"${SHARED_SECRET}\"" > /etc/ipsec.secrets
 
 ./bin/generate-mobileconfig > ~/ikev2-vpn.mobileconfig
 
-systemctl restart ndppd
 systemctl restart ipsec
