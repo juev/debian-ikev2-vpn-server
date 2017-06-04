@@ -53,7 +53,7 @@ EOF
 chmod +x /etc/network/if-up.d/iptables
 
 # hotfix for openssl `unable to write 'random state'` stderr
-SHARED_SECRET="$(openssl rand -base64 64 2>/dev/null)"
+SHARED_SECRET="$(openssl rand -base64 32 2>/dev/null)"
 [ -f /etc/ipsec.secrets ] || echo ": PSK \"${SHARED_SECRET}\"" > /etc/ipsec.secrets
 
 ./bin/generate-mobileconfig > ~/ikev2-vpn.mobileconfig
