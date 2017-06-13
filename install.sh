@@ -58,4 +58,34 @@ SHARED_SECRET="$(openssl rand -base64 32 2>/dev/null)"
 
 ./bin/generate-mobileconfig > ~/ikev2-vpn.mobileconfig
 
+if ! grep -qs "hwdsl2 VPN script" /etc/sysctl.conf; then
+cat >> /etc/sysctl.conf <<EOF
+# Added by hwdsl2 VPN script
+kernel.msgmnb = 65536
+kernel.msgmax = 65536
+kernel.shmmax = 68719476736
+kernel.shmall = 4294967296
+net.ipv4.ip_forward = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.lo.send_redirects = 0
+net.ipv4.conf.$NET_IFACE.send_redirects = 0
+net.ipv4.conf.all.rp_filter = 0
+net.ipv4.conf.default.rp_filter = 0
+net.ipv4.conf.lo.rp_filter = 0
+net.ipv4.conf.$NET_IFACE.rp_filter = 0
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+net.core.wmem_max = 12582912
+net.core.rmem_max = 12582912
+net.ipv4.tcp_rmem = 10240 87380 12582912
+net.ipv4.tcp_wmem = 10240 87380 12582912
+EOF
+fi
+
 systemctl restart ipsec
